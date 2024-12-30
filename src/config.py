@@ -21,6 +21,7 @@ class Config(BaseModel):
     output_dir: str
     data_config: DataConfig
     n_epochs: int
+    monitor_metric: str
     model_kwargs: dict
     accelerator: str
     optimizer: str
