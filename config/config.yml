@@ -1,0 +1,30 @@
+output_dir: 'model_output'
+n_epochs: 6
+accelerator: 'gpu'
+monitor_metric: 'accuracy'
+
+model_kwargs:
+  model_name: 'bert-base-uncased'
+  freeze: 80
+  fmt: 'fp16'
+
+optimizer: 'torch.optim.AdamW'
+optimizer_kwargs:
+  lr: 3e-5
+  weight_decay: 5e-8
+
+scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
+scheduler_kwargs:
+  T_max: 10
+  eta_min: 1e-5
+
+losses:
+  - name: 'CrossEntropy'
+    weight: 1.0
+    loss_fn: 'torch.nn.CrossEntropyLoss'
+    loss_kwargs: {reduction: 'mean', label_smoothing: 0.001}
+
+data_config:
+  batch_size: 16
+  n_workers: 6
+  labels: ['0', '1']

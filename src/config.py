@@ -1,0 +1,35 @@
+from typing import List
+
+from omegaconf import OmegaConf
+from pydantic import BaseModel
+
+
+class LossConfig(BaseModel):
+    name: str
+    weight: float
+    loss_fn: str
+    loss_kwargs: dict
+
+
+class DataConfig(BaseModel):
+    batch_size: int
+    n_workers: int
+    labels: List[str]
+
+
+class Config(BaseModel):
+    output_dir: str
+    data_config: DataConfig
+    n_epochs: int
+    model_kwargs: dict
+    accelerator: str
+    optimizer: str
+    optimizer_kwargs: dict
+    scheduler: str
+    scheduler_kwargs: dict
+    losses: List[LossConfig]
+
+    @classmethod
+    def from_yaml(cls, path: str) -> 'Config':
+        cfg = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
+        return cls(**cfg)
