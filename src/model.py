@@ -1,8 +1,8 @@
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, TrainingArguments, Trainer
 
-from src.metrics import compute_metrics
 from src.config import Config
 from src.utils import load_object
+from src.metrics import compute_metrics
 
 
 def create_trainer(config: Config, train_data, eval_data):
@@ -15,9 +15,14 @@ def create_trainer(config: Config, train_data, eval_data):
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
 
-    # ToDo добавить заморозку слоев
+    if config.model_kwargs['freeze']:
+        for param in model.bert.embeddings.parameters():
+            param.requires_grad = False
+        for param in model.bert.encoder.layer[:int(config.model_kwargs['freeze'] * len(model.bert.encoder.layer) / 100)].parameters():
+            param.requires_grad = False
+
     optimizer = load_object(config.optimizer)(
-        model.parameters(),
+        filter(lambda p: p.requires_grad, model.parameters()),
         **config.optimizer_kwargs,
     )
 
@@ -25,14 +30,19 @@ def create_trainer(config: Config, train_data, eval_data):
 
     training_args = TrainingArguments(
         output_dir=config.output_dir,
-        evaluation_strategy='epoch',
+        eval_strategy='epoch',
         save_strategy='epoch',
-        logging_steps=50,
+        logging_steps=20,
+        logging_dir='logs',
         per_device_train_batch_size=config.data_config.batch_size,
-        per_gpu_eval_batch_size=config.data_config.batch_size,
+        per_device_eval_batch_size=config.data_config.batch_size,
+        gradient_accumulation_steps=2,
+        max_grad_norm=0.3,
         num_train_epochs=config.n_epochs,
+        dataloader_num_workers=config.data_config.n_workers,
         load_best_model_at_end=True,
         metric_for_best_model=config.monitor_metric,
+        report_to=None,
     )
 
     return Trainer(
