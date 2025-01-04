@@ -28,6 +28,7 @@ class Config(BaseModel):
     optimizer_kwargs: dict
     scheduler: str
     scheduler_kwargs: dict
+    deepspeed_config: str
     losses: List[LossConfig]
 
     @classmethod
