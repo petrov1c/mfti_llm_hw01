@@ -18,7 +18,7 @@ def arg_parse():
 
 
 def train(config: Config):
-    task = Task.init(project_name='Disable Logging', task_name='LoRA', auto_connect_frameworks={'pytorch': False})
+    task = Task.init(project_name='Disable Logging', task_name=config.task_name, auto_connect_frameworks={'pytorch': False})
     os.environ["WANDB_DISABLED"] = "true"
 
     train_dataset, eval_dataset = prepare_russian_superglue(config.model_kwargs['model_name'])
@@ -40,8 +40,7 @@ def train(config: Config):
             trainer = create_trainer(config, train_dataset, eval_dataset)
             trainer.train()
             accuracy = trainer.state.best_metric
-            # print(f'freeze: {freeze}, type: {fmt}')
-            # print(f'model type :{trainer.model.dtype}')
+            # print(f'freeze: {freeze}, type: {fmt}, model type :{trainer.model.dtype}')
             # print(trainer.state)
 
             end_time = time.time()

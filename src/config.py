@@ -18,6 +18,7 @@ class DataConfig(BaseModel):
 
 
 class Config(BaseModel):
+    task_name: str
     output_dir: str
     data_config: DataConfig
     n_epochs: int
