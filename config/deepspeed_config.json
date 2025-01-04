@@ -2,9 +2,9 @@
     "bf16": {
         "enabled": "auto"
     },
-    "gradient_accumulation_steps": 1,
+    "gradient_accumulation_steps": 4,
     "gradient_clipping": 1.0,
-    "train_batch_size": 512,
+    "train_batch_size": 1024,
     "zero_optimization": {
         "stage": 0
     }

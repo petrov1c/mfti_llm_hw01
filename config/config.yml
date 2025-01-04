@@ -1,11 +1,11 @@
 output_dir: 'model_output'
-n_epochs: 2
+n_epochs: 12
 accelerator: 'gpu'
 monitor_metric: 'accuracy'
 
 model_kwargs:
   model_name: 'bert-base-uncased'
-  gradient_accumulation_steps: 1
+  gradient_accumulation_steps: 4
   max_grad_norm: 1.0
   freeze: 80
   fmt: 'fp16'
@@ -29,6 +29,6 @@ losses:
     loss_kwargs: {reduction: 'mean', label_smoothing: 0.001}
 
 data_config:
-  batch_size: 512
-  n_workers: 2
+  batch_size: 256
+  n_workers: 4
   labels: ['0', '1']
