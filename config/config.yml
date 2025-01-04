@@ -1,22 +1,26 @@
 output_dir: 'model_output'
-n_epochs: 6
+n_epochs: 2
 accelerator: 'gpu'
 monitor_metric: 'accuracy'
 
 model_kwargs:
   model_name: 'bert-base-uncased'
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
   freeze: 80
   fmt: 'fp16'
 
 optimizer: 'torch.optim.AdamW'
 optimizer_kwargs:
-  lr: 3e-5
+  lr: 5e-5
   weight_decay: 5e-8
 
 scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
 scheduler_kwargs:
   T_max: 10
   eta_min: 1e-5
+
+deepspeed_config: 'config/deepspeed_config.json'
 
 losses:
   - name: 'CrossEntropy'
@@ -25,6 +29,6 @@ losses:
     loss_kwargs: {reduction: 'mean', label_smoothing: 0.001}
 
 data_config:
-  batch_size: 16
-  n_workers: 6
+  batch_size: 512
+  n_workers: 2
   labels: ['0', '1']
