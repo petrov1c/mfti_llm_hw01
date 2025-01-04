@@ -1,3 +1,4 @@
+task_name: 'freeze_layers'
 output_dir: 'model_output'
 n_epochs: 12
 accelerator: 'gpu'
