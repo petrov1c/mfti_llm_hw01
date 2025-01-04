@@ -46,8 +46,9 @@ def create_trainer(config: Config, train_data, eval_data):
         dataloader_num_workers=config.data_config.n_workers,
         load_best_model_at_end=True,
         metric_for_best_model=config.monitor_metric,
-        report_to='clearml',
         deepspeed=config.deepspeed_config,
+        report_to='clearml',
+        disable_tqdm=True,
     )
 
     return Trainer(
