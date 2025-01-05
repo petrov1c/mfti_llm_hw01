@@ -7,7 +7,7 @@ import pandas as pd
 from clearml import Task
 
 from src.config import Config
-from src.datamodule import prepare_russian_superglue
+from src.datamodule import glue_dataset
 from src.model import create_trainer
 
 
@@ -21,7 +21,7 @@ def train(config: Config):
     task = Task.init(project_name='Disable Logging', task_name=config.task_name, auto_connect_frameworks={'pytorch': False})
     os.environ["WANDB_DISABLED"] = "true"
 
-    train_dataset, eval_dataset = prepare_russian_superglue(config.model_kwargs['model_name'])
+    train_dataset, eval_dataset = glue_dataset(config.model_kwargs['model_name'])
     config.data_config.labels = train_dataset.features['label'].names.copy()
 
     # Параметры эксперимента

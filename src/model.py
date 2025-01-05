@@ -41,7 +41,6 @@ def create_trainer(config: Config, train_data, eval_data):
         max_grad_norm=config.model_kwargs['max_grad_norm'],
         learning_rate=config.optimizer_kwargs['lr'],
         # weight_decay=config.optimizer_kwargs['weight_decay'],
-        # optim_args='weight_decay=5e-8',
         num_train_epochs=config.n_epochs,
         dataloader_num_workers=config.data_config.n_workers,
         load_best_model_at_end=True,

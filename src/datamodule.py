@@ -2,7 +2,7 @@ from transformers import AutoTokenizer
 from datasets import load_dataset
 
 
-def prepare_russian_superglue(model_name):
+def glue_dataset(model_name):
     def preprocess_function(examples):
         return tokenizer(examples['sentence'], truncation=True)
 
