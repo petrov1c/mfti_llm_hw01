@@ -8,7 +8,7 @@ from clearml import Task
 
 from src.config import Config
 from src.datamodule import glue_dataset
-from src.model import create_trainer
+from src.model import create_trainer_with_adapter
 
 
 def arg_parse():
@@ -25,33 +25,30 @@ def train(config: Config):
     config.data_config.labels = train_dataset.features['label'].names.copy()
 
     # Параметры эксперимента
-    layer_freezing = [80, 50, 20, 0]  # Процент замороженных слоев
     data_formats = ['float32', 'bfloat16']  # Форматы данных
 
     results = []
-    for freeze in layer_freezing:
-        for fmt in data_formats:
-            start_time = time.time()
+    for fmt in data_formats:
+        start_time = time.time()
 
-            config.model_kwargs['freeze'] = freeze
-            config.model_kwargs['fmt'] = fmt
+        config.model_kwargs['fmt'] = fmt
+        trainer = create_trainer_with_adapter(config, train_dataset, eval_dataset)
+        trainer.train()
+        accuracy = trainer.state.best_metric
+        print(f"accuracy: {trainer.evaluate()}")
+        print(f"Оценка модели: {trainer.evaluate()}")
+        # print(f'freeze: {freeze}, type: {fmt}, model type :{trainer.model.dtype}')
+        # print(trainer.state)
 
-            trainer = create_trainer(config, train_dataset, eval_dataset)
-            trainer.train()
-            accuracy = trainer.state.best_metric
-            # print(f'freeze: {freeze}, type: {fmt}, model type :{trainer.model.dtype}')
-            # print(trainer.state)
-
-            end_time = time.time()
-            results.append({
-                'frozen_layers': freeze,
-                'data_format': fmt,
-                'accuracy': accuracy,
-                'training_time': end_time - start_time
-            })
+        end_time = time.time()
+        results.append({
+            'data_format': fmt,
+            'accuracy': accuracy,
+            'training_time': end_time - start_time
+        })
 
     results_df = pd.DataFrame(results)
-    results_df.to_csv('result/results.csv', index=False, header=True)
+    results_df.to_csv('result/results_adapter.csv', index=False, header=True)
 
 
 if __name__ == '__main__':
