@@ -1,6 +1,6 @@
 task_name: 'freeze_layers'
 output_dir: 'model_output'
-n_epochs: 12
+n_epochs: 8
 accelerator: 'gpu'
 monitor_metric: 'accuracy'
 

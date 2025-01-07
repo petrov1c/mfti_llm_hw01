@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from omegaconf import OmegaConf
 from pydantic import BaseModel
@@ -24,6 +24,7 @@ class Config(BaseModel):
     n_epochs: int
     monitor_metric: str
     model_kwargs: dict
+    adapter_kwargs: Optional[dict] = None
     accelerator: str
     optimizer: str
     optimizer_kwargs: dict
