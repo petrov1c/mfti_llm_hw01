@@ -1,4 +1,4 @@
-task_name: 'freeze_layers'
+task_name: 'lora_adapter'
 output_dir: 'model_output'
 n_epochs: 12
 accelerator: 'gpu'
@@ -8,12 +8,11 @@ model_kwargs:
   model_name: 'bert-base-uncased'
   gradient_accumulation_steps: 4
   max_grad_norm: 1.0
-  freeze: 80
-  fmt: 'float32'
+  fmt: 'bfloat16'
 
 optimizer: 'torch.optim.AdamW'
 optimizer_kwargs:
-  lr: 5e-5
+  lr: 1e-4
   weight_decay: 5e-8
 
 scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
