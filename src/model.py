@@ -83,7 +83,7 @@ def create_trainer_with_adapter(config: Config, train_dataset, eval_dataset):
 
     tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
 
-    model = add_lora_adapter(model)
+    model = add_lora_adapter(model, **config.adapter_kwargs)
 
     optimizer = load_object(config.optimizer)(
         filter(lambda p: p.requires_grad, model.parameters()),
@@ -97,6 +97,9 @@ def create_trainer_with_adapter(config: Config, train_dataset, eval_dataset):
         eval_strategy='epoch',
         save_strategy='epoch',
         logging_dir='logs',
+        per_device_train_batch_size=config.data_config.batch_size,
+        per_device_eval_batch_size=config.data_config.batch_size,
+        gradient_accumulation_steps=config.model_kwargs['gradient_accumulation_steps'],
         max_grad_norm=config.model_kwargs['max_grad_norm'],
         num_train_epochs=config.n_epochs,
         dataloader_num_workers=config.data_config.n_workers,
