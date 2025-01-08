@@ -3,5 +3,6 @@
 /notebook/.ipynb_checkpoints/
 /logs/
 /model_output/
+/src/__pycache__/
 
 /.env
