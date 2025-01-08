@@ -14,7 +14,7 @@ class LossConfig(BaseModel):
 class DataConfig(BaseModel):
     batch_size: int
     n_workers: int
-    labels: List[str]
+    labels: Optional[List[str]] = None
 
 
 class Config(BaseModel):
@@ -30,7 +30,7 @@ class Config(BaseModel):
     optimizer_kwargs: dict
     scheduler: str
     scheduler_kwargs: dict
-    deepspeed_config: str
+    deepspeed_config: Optional[str] = None
     losses: List[LossConfig]
 
     @classmethod
