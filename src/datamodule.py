@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
+from datasets.dataset_dict import DatasetDict
 
 import numpy as np
 import collections
@@ -19,7 +20,7 @@ def glue_dataset(model_name):
 ################################################
 #   Загрузка датасетов для QA
 
-def prepare_squad(tokenizer):
+def prepare_squad(tokenizer, dataset=None):
     max_length = 512  # Максимальная длина элемента (вопрос и контекст)
     doc_stride = 128  # Требуется разрешенное перекрытие между двумя частями контекста при его разделении.
     pad_on_right = tokenizer.padding_side == "right"
@@ -124,7 +125,9 @@ def prepare_squad(tokenizer):
 
         return tokenized_examples
 
-    dataset = load_dataset("squad")
+    if dataset is None:
+        dataset = load_dataset("squad")
+
     tokenized_dataset = dataset.map(preprocess, batched=True, remove_columns=dataset["train"].column_names)
 
     validation_features = dataset["validation"].map(
@@ -134,6 +137,35 @@ def prepare_squad(tokenizer):
     )
     return tokenized_dataset['train'], tokenized_dataset['validation'], validation_features, dataset
 
+
+def prepare_coqa(tokenizer):
+    def coqa2squad(origin_dataset):
+        idx = 0
+        data = []
+        for example in origin_dataset:
+            for i in range(len(example['questions'])):
+                idx += 1
+                data.append(
+                    {
+                        'id': str(idx),
+                        'context': example['story'],
+                        'question': example['questions'][i],
+                        'answers': {
+                            'answer_start': [example['answers']['answer_start'][i]],
+                            'text': [example['answers']['input_text'][i]],
+                        },
+                    }
+                )
+
+        return Dataset.from_list(data)
+
+    coqa = load_dataset("coqa")
+    train_set = coqa2squad(coqa['train'])
+    eval_set = coqa2squad(coqa['validation'])
+
+    squad = DatasetDict({'train': train_set, 'validation': eval_set})
+
+    return prepare_squad(tokenizer, squad)
 
 def postprocess_qa_predictions(tokenizer, examples, features, raw_predictions, n_best_size=20, max_answer_length=30):
     all_start_logits, all_end_logits = raw_predictions

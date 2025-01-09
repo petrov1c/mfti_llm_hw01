@@ -8,7 +8,7 @@ from clearml import Task
 from transformers import AutoTokenizer
 
 from src.config import Config
-from src.datamodule import prepare_squad, postprocess_qa_predictions
+from src.datamodule import prepare_squad, prepare_coqa, postprocess_qa_predictions
 from src.model import create_trainer_qa
 from src.metrics import metric_qa
 
@@ -27,8 +27,8 @@ def train(config: Config):
     tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
 
     datasets = {
-        #    "coqa": load_dataset("coqa"),
-        "squad": prepare_squad(tokenizer)
+        "coqa": prepare_coqa(tokenizer),
+        "squad": prepare_squad(tokenizer),
     }
 
     results = []
