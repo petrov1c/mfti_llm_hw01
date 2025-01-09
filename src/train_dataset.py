@@ -5,10 +5,11 @@ import time
 import pandas as pd
 
 from clearml import Task
+from transformers import AutoTokenizer
 
 from src.config import Config
-from src.datamodule import glue_dataset
-from src.model import create_trainer_with_adapter
+from src.datamodule import prepare_squad
+from src.model import create_trainer_qa
 
 
 def arg_parse():
@@ -20,43 +21,37 @@ def arg_parse():
 def train(config: Config):
     task = Task.init(project_name='Disable Logging', task_name=config.task_name, auto_connect_frameworks={'pytorch': False})
     os.environ["WANDB_DISABLED"] = "true"
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
-    train_dataset, eval_dataset = glue_dataset(config.model_kwargs['model_name'])
-    config.data_config.labels = train_dataset.features['label'].names.copy()
+    tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
 
-    # Параметры эксперимента
-    adapters = {
-        'lora (r=16, alpha=32)': {'r':16, 'alpha':32},
-        'lora (r=8, alpha=32)': {'r': 8, 'alpha': 32},
-        'lora (r=8, alpha=8)': {'r': 8, 'alpha': 8},
+    datasets = {
+        #    "coqa": load_dataset("coqa"),
+        "squad": prepare_squad(tokenizer)
     }
-    data_formats = ['float32', 'bfloat16']  # Форматы данных
 
     results = []
-    for adapter, adapter_kwargs in adapters.items():
-        for fmt in data_formats:
-            start_time = time.time()
+    for name, (train_dataset, eval_dataset) in datasets.items():
+        start_time = time.time()
 
-            config.model_kwargs['fmt'] = fmt
-            config.adapter_kwargs = adapter_kwargs
-            trainer = create_trainer_with_adapter(config, train_dataset, eval_dataset)
-            trainer.train()
-            accuracy = trainer.state.best_metric
-            # print(f"accuracy: {trainer.evaluate()}")
-            # print(f"Оценка модели: {trainer.evaluate()}")
-            # print(f'freeze: {freeze}, type: {fmt}, model type :{trainer.model.dtype}')
-            # print(trainer.state)
+        trainer = create_trainer_qa(config, train_dataset, eval_dataset)
+        trainer.train()
+        accuracy = trainer.state.best_metric
+        print(f"accuracy: {trainer.state.best_metric}")
+        print(f"Оценка модели: {trainer.evaluate()}")
+        print(f'model type :{trainer.model.dtype}')
+        print(trainer.state)
 
-            end_time = time.time()
-            results.append({
-                'adapter': adapter,
-                'data_format': fmt,
-                'accuracy': accuracy,
-                'training_time': end_time - start_time
-            })
+        end_time = time.time()
+        results.append({
+            'name': name,
+            # 'data_format': fmt,
+            'accuracy': accuracy,
+            'training_time': end_time - start_time
+        })
 
     results_df = pd.DataFrame(results)
-    results_df.to_csv('result/results_adapter.csv', index=False, header=True)
+    results_df.to_csv('result/results_dataset.csv', index=False, header=True)
 
 
 if __name__ == '__main__':
