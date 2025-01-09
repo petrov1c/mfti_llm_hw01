@@ -59,7 +59,7 @@ def train(config: Config):
         })
 
     results_df = pd.DataFrame(results)
-    results_df.to_csv('result/results_dataset.csv', index=False, header=True)
+    results_df.to_csv('result/results_qa.csv', index=False, header=True)
 
 
 if __name__ == '__main__':

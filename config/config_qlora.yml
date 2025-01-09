@@ -1,0 +1,36 @@
+task_name: 'qlora'
+output_dir: 'model_qlora'
+n_epochs: 8
+accelerator: 'gpu'
+monitor_metric: 'accuracy'
+
+model_kwargs:
+  model_name: 'bert-base-uncased'
+  gradient_accumulation_steps: 4
+  max_grad_norm: 1.0
+  fmt: 'bfloat16'
+
+adapter_kwargs:
+  r: 16
+  alpha: 32
+
+optimizer: 'paged_adamw_32bit'
+optimizer_kwargs:
+  lr: 2e-5
+  weight_decay: 5e-8
+
+scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
+scheduler_kwargs:
+  T_max: 10
+  eta_min: 1e-5
+
+losses:
+  - name: 'CrossEntropy'
+    weight: 1.0
+    loss_fn: 'torch.nn.CrossEntropyLoss'
+    loss_kwargs: {reduction: 'mean', label_smoothing: 0.001}
+
+data_config:
+  batch_size: 256
+  n_workers: 0
+  labels: ['0', '1']

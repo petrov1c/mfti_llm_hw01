@@ -1,5 +1,5 @@
 task_name: 'train_dataset'
-output_dir: 'model_output'
+output_dir: 'model_qa'
 n_epochs: 2
 accelerator: 'gpu'
 monitor_metric: 'exact_match'
@@ -12,7 +12,7 @@ model_kwargs:
 
 optimizer: 'torch.optim.AdamW'
 optimizer_kwargs:
-  lr: 2e-5
+  lr: 5e-5
   weight_decay: 1e-2
 
 scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
