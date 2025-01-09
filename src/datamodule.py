@@ -1,6 +1,10 @@
 from transformers import AutoTokenizer
 from datasets import load_dataset
 
+import numpy as np
+import collections
+from tqdm.auto import tqdm
+
 
 def glue_dataset(model_name):
     def preprocess_function(examples):
@@ -16,11 +20,11 @@ def glue_dataset(model_name):
 #   Загрузка датасетов для QA
 
 def prepare_squad(tokenizer):
-    def preprocess(examples):
-        max_length = 512  # Максимальная длина элемента (вопрос и контекст)
-        doc_stride = 128  # Требуется разрешенное перекрытие между двумя частями контекста при его разделении.
-        pad_on_right = tokenizer.padding_side == "right"
+    max_length = 512  # Максимальная длина элемента (вопрос и контекст)
+    doc_stride = 128  # Требуется разрешенное перекрытие между двумя частями контекста при его разделении.
+    pad_on_right = tokenizer.padding_side == "right"
 
+    def preprocess(examples):
         examples["question"] = [q.lstrip() for q in examples["question"]]
 
         tokenized_examples = tokenizer(
@@ -87,25 +91,122 @@ def prepare_squad(tokenizer):
 
         return tokenized_examples
 
-#    def preprocess(example):
-#        # Tokenize question and context
-#        encoding = tokenizer(example['question'], example['context'], truncation=True)
-#        # Encode input ids and attention masks
-#        input_ids = encoding['input_ids']
-#        attention_mask = encoding['attention_mask']
-#        # Convert answer positions to start and end token indices
-#        start_token = input_ids.index(tokenizer.sep_token_id) + 1
-#        end_token = len(input_ids) - 1
-#        start_index = example['answers']['answer_start'][0]
-#        end_index = start_index + len(example['answers']['text'][0])
-#        # If answer is out of span, use default values
-#        if start_index < start_token or end_index > end_token:
-#            start_index = end_index = 0
-#        # Return preprocessed example
-#        return {'input_ids': input_ids, 'attention_mask': attention_mask, 'start_index': start_index,
-#                'end_index': end_index}
+    def prepare_validation_features(examples):
+        # Удаляем пробелы слева
+        examples["question"] = [q.lstrip() for q in examples["question"]]
+
+        tokenized_examples = tokenizer(
+            examples["question" if pad_on_right else "context"],
+            examples["context" if pad_on_right else "question"],
+            truncation="only_second" if pad_on_right else "only_first",
+            max_length=max_length,
+            stride=doc_stride,
+            return_overflowing_tokens=True,
+            return_offsets_mapping=True,
+            padding="max_length",
+        )
+
+        sample_mapping = tokenized_examples.pop("overflow_to_sample_mapping")
+
+        tokenized_examples["example_id"] = []
+
+        for i in range(len(tokenized_examples["input_ids"])):
+            sequence_ids = tokenized_examples.sequence_ids(i)
+            context_index = 1 if pad_on_right else 0
+
+            sample_index = sample_mapping[i]
+            tokenized_examples["example_id"].append(examples["id"][sample_index])
+
+            tokenized_examples["offset_mapping"][i] = [
+                (o if sequence_ids[k] == context_index else None)
+                for k, o in enumerate(tokenized_examples["offset_mapping"][i])
+            ]
+
+        return tokenized_examples
 
     dataset = load_dataset("squad")
-    dataset = dataset.map(preprocess, batched=True, remove_columns=dataset["train"].column_names)
+    tokenized_dataset = dataset.map(preprocess, batched=True, remove_columns=dataset["train"].column_names)
 
-    return dataset['train'], dataset['validation']
+    validation_features = dataset["validation"].map(
+        prepare_validation_features,
+        batched=True,
+        remove_columns=dataset["validation"].column_names
+    )
+    return tokenized_dataset['train'], tokenized_dataset['validation'], validation_features, dataset
+
+
+def postprocess_qa_predictions(tokenizer, examples, features, raw_predictions, n_best_size=20, max_answer_length=30):
+    all_start_logits, all_end_logits = raw_predictions
+    # Build a map example to its corresponding features.
+    example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
+    features_per_example = collections.defaultdict(list)
+    for i, feature in enumerate(features):
+        features_per_example[example_id_to_index[feature["example_id"]]].append(i)
+
+    # The dictionaries we have to fill.
+    predictions = collections.OrderedDict()
+
+    # Logging.
+    print(f"Post-processing {len(examples)} example predictions split into {len(features)} features.")
+
+    # Let's loop over all the examples!
+    for example_index, example in enumerate(tqdm(examples)):
+        # Those are the indices of the features associated to the current example.
+        feature_indices = features_per_example[example_index]
+
+        min_null_score = None  # Only used if squad_v2 is True.
+        valid_answers = []
+
+        context = example["context"]
+        # Looping through all the features associated to the current example.
+        for feature_index in feature_indices:
+            # We grab the predictions of the model for this feature.
+            start_logits = all_start_logits[feature_index]
+            end_logits = all_end_logits[feature_index]
+            # This is what will allow us to map some the positions in our logits to span of texts in the original
+            # context.
+            offset_mapping = features[feature_index]["offset_mapping"]
+
+            # Update minimum null prediction.
+            cls_index = features[feature_index]["input_ids"].index(tokenizer.cls_token_id)
+            feature_null_score = start_logits[cls_index] + end_logits[cls_index]
+            if min_null_score is None or min_null_score < feature_null_score:
+                min_null_score = feature_null_score
+
+            # Go through all possibilities for the `n_best_size` greater start and end logits.
+            start_indexes = np.argsort(start_logits)[-1: -n_best_size - 1: -1].tolist()
+            end_indexes = np.argsort(end_logits)[-1: -n_best_size - 1: -1].tolist()
+            for start_index in start_indexes:
+                for end_index in end_indexes:
+                    # Don't consider out-of-scope answers, either because the indices are out of bounds or correspond
+                    # to part of the input_ids that are not in the context.
+                    if (
+                            start_index >= len(offset_mapping)
+                            or end_index >= len(offset_mapping)
+                            or offset_mapping[start_index] is None
+                            or offset_mapping[end_index] is None
+                    ):
+                        continue
+                    # Don't consider answers with a length that is either < 0 or > max_answer_length.
+                    if end_index < start_index or end_index - start_index + 1 > max_answer_length:
+                        continue
+
+                    start_char = offset_mapping[start_index][0]
+                    end_char = offset_mapping[end_index][1]
+                    valid_answers.append(
+                        {
+                            "score": start_logits[start_index] + end_logits[end_index],
+                            "text": context[start_char: end_char]
+                        }
+                    )
+
+        if len(valid_answers) > 0:
+            best_answer = sorted(valid_answers, key=lambda x: x["score"], reverse=True)[0]
+        else:
+            # In the very rare edge case we have not a single non-null prediction, we create a fake prediction to avoid
+            # failure.
+            best_answer = {"text": "", "score": 0.0}
+
+        predictions[example["id"]] = best_answer["text"]
+
+    return predictions

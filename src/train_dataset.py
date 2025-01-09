@@ -8,8 +8,9 @@ from clearml import Task
 from transformers import AutoTokenizer
 
 from src.config import Config
-from src.datamodule import prepare_squad
+from src.datamodule import prepare_squad, postprocess_qa_predictions
 from src.model import create_trainer_qa
+from src.metrics import metric_qa
 
 
 def arg_parse():
@@ -31,22 +32,29 @@ def train(config: Config):
     }
 
     results = []
-    for name, (train_dataset, eval_dataset) in datasets.items():
+    for name, (train_dataset, eval_dataset, validation_features, datasets) in datasets.items():
         start_time = time.time()
 
         trainer = create_trainer_qa(config, train_dataset, eval_dataset)
         trainer.train()
-        accuracy = trainer.state.best_metric
-        print(f"accuracy: {trainer.state.best_metric}")
-        print(f"Оценка модели: {trainer.evaluate()}")
-        print(f'model type :{trainer.model.dtype}')
-        print(trainer.state)
+
+        raw_predictions = trainer.predict(validation_features)
+        validation_features.set_format(type=validation_features.format["type"],
+                                       columns=list(validation_features.features.keys()))
+
+        final_predictions = postprocess_qa_predictions(tokenizer, datasets["validation"], validation_features,
+                                                       raw_predictions.predictions)
+
+        formatted_predictions = [{"id": k, "prediction_text": v} for k, v in final_predictions.items()]
+        references = [{"id": ex["id"], "answers": ex["answers"]} for ex in datasets["validation"]]
+
+        metrics = metric_qa.compute(predictions=formatted_predictions, references=references)
 
         end_time = time.time()
         results.append({
             'name': name,
-            # 'data_format': fmt,
-            'accuracy': accuracy,
+            'em': metrics['exact_match'],
+            'f1': metrics['f1'],
             'training_time': end_time - start_time
         })
 

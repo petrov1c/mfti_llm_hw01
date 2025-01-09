@@ -137,9 +137,9 @@ def create_trainer_qa(config: Config, train_data, eval_data):
     tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
 
     if 'freeze' in config.model_kwargs and config.model_kwargs['freeze']:
-        for param in model.bert.embeddings.parameters():
+        for param in model.base_model.embeddings.parameters():
             param.requires_grad = False
-        for param in model.bert.encoder.layer[:int(config.model_kwargs['freeze'] * len(model.bert.encoder.layer) / 100)].parameters():
+        for param in model.base_model.transformer.layer[:int(config.model_kwargs['freeze'] * len(model.base_model.transformer.layer) / 100)].parameters():
             param.requires_grad = False
 
     optimizer = load_object(config.optimizer)(
@@ -159,8 +159,6 @@ def create_trainer_qa(config: Config, train_data, eval_data):
         max_grad_norm=config.model_kwargs['max_grad_norm'],
         num_train_epochs=config.n_epochs,
         dataloader_num_workers=config.data_config.n_workers,
-        load_best_model_at_end=True,
-        metric_for_best_model=config.monitor_metric,
         report_to='clearml',
         # disable_tqdm=True,
     )
@@ -172,5 +170,4 @@ def create_trainer_qa(config: Config, train_data, eval_data):
         train_dataset=train_data,
         eval_dataset=eval_data,
         optimizers=(optimizer, scheduler),
-        compute_metrics=compute_metrics,
     )
