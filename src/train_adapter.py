@@ -42,7 +42,7 @@ def train(config: Config):
             trainer = create_trainer_with_adapter(config, train_dataset, eval_dataset)
             trainer.train()
             accuracy = trainer.state.best_metric
-            # print(f"accuracy: {trainer.evaluate()}")
+            # print(f"accuracy: {trainer.state.best_metric}")
             # print(f"Оценка модели: {trainer.evaluate()}")
             # print(f'freeze: {freeze}, type: {fmt}, model type :{trainer.model.dtype}')
             # print(trainer.state)
