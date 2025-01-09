@@ -1,5 +1,5 @@
 task_name: 'freeze_layers'
-output_dir: 'model_output'
+output_dir: 'model_freeze'
 n_epochs: 8
 accelerator: 'gpu'
 monitor_metric: 'accuracy'

@@ -110,6 +110,11 @@ def create_trainer_with_adapter(config: Config, train_dataset, eval_dataset):
         max_grad_norm=config.model_kwargs['max_grad_norm'],
         num_train_epochs=config.n_epochs,
         dataloader_num_workers=config.data_config.n_workers,
+
+        bf16=True,
+        tf32=True,
+        warmup_ratio=0.03,
+
         load_best_model_at_end=True,
         metric_for_best_model=config.monitor_metric,
         report_to = 'clearml',
@@ -194,11 +199,21 @@ def create_qtrainer(config: Config, use_adapter, train_dataset, eval_dataset):
         id2label={idx: label for idx, label in enumerate(config.data_config.labels)},
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
-
     model = prepare_model_for_kbit_training(model)
     if use_adapter:
         model = add_lora_adapter(model, **config.adapter_kwargs)
+
+    tokenizer = AutoTokenizer.from_pretrained(config.model_kwargs['model_name'])
+
+    tokenized_train_dataset = train_dataset.map(
+        lambda e: tokenizer(e['sentence'], truncation=True, padding="max_length"), batched=True
+    )
+    tokenized_train_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
+
+    tokenized_eval_dataset = eval_dataset.map(
+        lambda e: tokenizer(e['sentence'], truncation=True, padding="max_length"), batched=True
+    )
+    tokenized_eval_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "label"])
 
     training_args = TrainingArguments(
         output_dir=config.output_dir,
@@ -216,8 +231,6 @@ def create_qtrainer(config: Config, use_adapter, train_dataset, eval_dataset):
         dataloader_num_workers=config.data_config.n_workers,
 
         bf16=True,
-        tf32=True,
-        remove_unused_columns=False,
         warmup_ratio=0.03,
 
         load_best_model_at_end=True,
@@ -230,8 +243,8 @@ def create_qtrainer(config: Config, use_adapter, train_dataset, eval_dataset):
         args=training_args,
         model=model,
         tokenizer=tokenizer,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
+        train_dataset=tokenized_train_dataset,
+        eval_dataset=tokenized_eval_dataset,
         compute_metrics=compute_metrics,
     )
 

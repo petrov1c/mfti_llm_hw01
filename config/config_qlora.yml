@@ -12,12 +12,11 @@ model_kwargs:
 
 adapter_kwargs:
   r: 16
-  alpha: 32
+  alpha: 16
 
 optimizer: 'paged_adamw_32bit'
 optimizer_kwargs:
-  lr: 2e-5
-  weight_decay: 5e-8
+  lr: 1e-4
 
 scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
 scheduler_kwargs:
@@ -32,5 +31,5 @@ losses:
 
 data_config:
   batch_size: 256
-  n_workers: 0
+  n_workers: 4
   labels: ['0', '1']

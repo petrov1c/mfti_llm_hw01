@@ -1,5 +1,5 @@
 task_name: 'lora_adapter'
-output_dir: 'model_output'
+output_dir: 'model_adapter'
 n_epochs: 8
 accelerator: 'gpu'
 monitor_metric: 'accuracy'
