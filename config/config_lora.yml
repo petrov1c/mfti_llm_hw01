@@ -1,5 +1,5 @@
-task_name: 'freeze_layers'
-output_dir: 'model_freeze'
+task_name: 'lora'
+output_dir: 'model_lora'
 n_epochs: 8
 accelerator: 'gpu'
 monitor_metric: 'accuracy'
@@ -8,20 +8,21 @@ model_kwargs:
   model_name: 'bert-base-uncased'
   gradient_accumulation_steps: 4
   max_grad_norm: 1.0
-  freeze: 80
-  fmt: 'float32'
+  fmt: 'bfloat16'
+
+adapter_kwargs:
+  r: 16
+  alpha: 32
 
 optimizer: 'torch.optim.AdamW'
 optimizer_kwargs:
-  lr: 5e-5
+  lr: 2e-5
   weight_decay: 5e-8
 
 scheduler: 'torch.optim.lr_scheduler.CosineAnnealingLR'
 scheduler_kwargs:
   T_max: 10
   eta_min: 1e-5
-
-deepspeed_config: 'config/deepspeed_config.json'
 
 losses:
   - name: 'CrossEntropy'
