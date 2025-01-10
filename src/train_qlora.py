@@ -10,6 +10,9 @@ from src.config import Config
 from src.datamodule import glue_dataset
 from src.model import create_qtrainer
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 def arg_parse():
     parser = argparse.ArgumentParser()

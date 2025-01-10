@@ -12,6 +12,9 @@ from src.datamodule import prepare_squad, prepare_coqa, postprocess_qa_predictio
 from src.model import create_trainer_qa
 from src.metrics import metric_qa
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 def arg_parse():
     parser = argparse.ArgumentParser()
@@ -51,12 +54,22 @@ def train(config: Config):
         metrics = metric_qa.compute(predictions=formatted_predictions, references=references)
 
         end_time = time.time()
-        results.append({
-            'name': name,
-            'em': metrics['exact_match'],
-            'f1': metrics['f1'],
-            'training_time': end_time - start_time
-        })
+        results.append(
+            {
+                'name': name,
+                'metric': 'exact_match',
+                'value': metrics['exact_match'],
+                'training_time': end_time - start_time
+            }
+        )
+        results.append(
+            {
+                'name': name,
+                'metric': 'f1',
+                'value': metrics['f1'],
+                'training_time': end_time - start_time
+            }
+        )
 
     results_df = pd.DataFrame(results)
     results_df.to_csv('result/results_qa.csv', index=False, header=True)
