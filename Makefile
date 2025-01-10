@@ -1,9 +1,9 @@
 .PHONY: train
-train:
-	PYTHONPATH=. python src/train.py config/config.yml
+train_freeze:
+	PYTHONPATH=. python src/train_freeze.py config/config_freeze.yml
 
-train_adapter:
-	PYTHONPATH=. python src/train_adapter.py config/config_adapter.yml
+train_lora:
+	PYTHONPATH=. python src/train_lora.py config/config_lora.yml
 
 train_qa:
 	PYTHONPATH=. python src/train_qa.py config/config_qa.yml
