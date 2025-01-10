@@ -164,6 +164,11 @@ def create_trainer_qa(config: Config, train_data, eval_data):
         max_grad_norm=config.model_kwargs['max_grad_norm'],
         num_train_epochs=config.n_epochs,
         dataloader_num_workers=config.data_config.n_workers,
+
+        bf16=True,
+        tf32=True,
+        warmup_ratio=0.03,
+
         report_to='clearml',
 #        disable_tqdm=True,
     )
